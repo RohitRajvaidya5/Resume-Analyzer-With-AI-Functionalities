@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>File: {{ doc.file.name }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-3xl bg-white shadow-xl rounded-2xl p-8">
+
+    <!-- Navigation -->
+    <div class="flex justify-between items-center mb-6">
+      <a href="/" class="text-blue-600 hover:underline font-medium">← Back</a>
+      <a href="{{ doc.file.url }}" download
+         class="px-4 py-2 bg-blue-600 text-white text-sm rounded-xl shadow hover:bg-blue-700 transition">
+        Download File
+      </a>
+    </div>
+
+    <!-- File name -->
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">
+      {{ doc.file.name|cut:"texts/" }}
+    </h1>
+
+    <!-- File content -->
+    <div class="bg-gray-100 p-4 rounded-lg shadow-inner max-h-[50vh] overflow-y-auto mb-6">
+      <pre class="whitespace-pre-wrap break-words text-gray-800 text-sm font-mono">
+{{ content }}
+      </pre>
+    </div>
+
+    <!-- Job Description Section -->
+    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow">
+      <h2 class="text-xl font-semibold text-gray-800 mb-3">Job Description</h2>
+        <div class="bg-gray-100 p-4 rounded-lg shadow-inner max-h-[50vh] overflow-y-auto mb-6">
+      <pre class="whitespace-pre-wrap break-words text-gray-800 text-sm font-mono">
+{{ doc.job_description }}
+      </pre>
+    </div>
+    </div>
+
+  </div>
+</body>
+</html>

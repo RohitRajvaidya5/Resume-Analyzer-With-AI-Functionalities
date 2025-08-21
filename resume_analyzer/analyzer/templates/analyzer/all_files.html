@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uploaded Resumes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">📂 Uploaded Resumes</h1>
+            <a href="{% url 'upload' %}"
+               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition">
+                ➕ Upload New File
+            </a>
+        </div>
+
+        <!-- File List -->
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {% for file in files %}
+                <a href="{% url 'detail' file.pk %}"
+                   class="block bg-white rounded-xl shadow hover:shadow-lg transition p-4 border border-gray-200">
+
+                    <!-- File Name & Upload Date -->
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-semibold text-lg text-blue-700 truncate">
+                            {{ file.file.name|slice:":30" }}{% if file.file.name|length > 30 %}...{% endif %}
+                        </h2>
+                        <span class="text-sm text-gray-500">{{ file.uploaded_at|date:"M d, Y" }}</span>
+                    </div>
+
+                    <!-- Job Description -->
+                    <p class="text-sm text-gray-700 mt-3">
+                        <strong class="text-gray-900">📝 Job Description:</strong>
+                        {{ file.job_description|default:"Not provided" }}
+                    </p>
+
+                    <!-- Hint -->
+                    <p class="text-sm text-gray-500 mt-2 italic">Click to view details</p>
+                </a>
+            {% empty %}
+                <div class="col-span-full text-center py-12 bg-white rounded-xl shadow-md">
+                    <p class="text-gray-500 text-lg">No resumes uploaded yet.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
