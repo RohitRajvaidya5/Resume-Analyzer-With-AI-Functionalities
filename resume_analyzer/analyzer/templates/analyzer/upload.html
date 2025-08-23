@@ -2,81 +2,75 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Upload a Text File</title>
+  <title>Resume Analyzer</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Smooth fade-in animation */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in {
+      animation: fadeIn 0.8s ease-out forwards;
+    }
+  </style>
 </head>
 {% load widget_tweaks %}
 
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+<body class="bg-gray-50 min-h-screen flex items-center justify-center px-6">
 
-  <div class="w-full max-w-lg bg-white shadow-xl rounded-2xl p-8">
+  <div class="w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-12 fade-in hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition">
 
-      <!-- Main Page Title -->
-  <h2 class="text-4xl font-bold text-gray-900 mb-4 text-center">
-    Resume Analyzer
-  </h2>
-      <br>
-      <hr>
-      <br>
-
-    <!-- Heading -->
-    <h1 class="text-xl font-bold text-gray-900 mb-6 text-center">
-      📄 Upload Resume File
+    <!-- Main Title -->
+    <h1 class="text-5xl font-semibold text-gray-900 text-center tracking-tight mb-4">
+      Resume Analyzer
     </h1>
+    <p class="text-gray-500 text-center text-lg mb-12 max-w-lg mx-auto leading-relaxed">
+      Upload your resume and job description for instant, AI-powered analysis.
+    </p>
 
-
-    <!-- Messages -->
-{#{% if messages %}#}
-{#  <div class="mb-6">#}
-{#    <ul class="space-y-2">#}
-{#      {% for m in messages %}#}
-{#        <li class="p-3 rounded-lg text-sm font-medium#}
-{#                   {% if 'success' in m.tags %}#}
-{#                     bg-green-100 text-green-800 border border-green-200#}
-{#                   {% elif 'error' in m.tags %}#}
-{#                     bg-red-100 text-red-800 border border-red-200#}
-{#                   {% else %}#}
-{#                     bg-blue-100 text-blue-800 border border-blue-200#}
-{#                   {% endif %}">#}
-{#          {{ m }}#}
-{#        </li>#}
-{#      {% endfor %}#}
-{#    </ul>#}
-{#  </div>#}
-{#{% endif %}#}
     <!-- Upload Form -->
-    <form method="post" enctype="multipart/form-data"
-          class="flex flex-col gap-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-10">
       {% csrf_token %}
-{#        {{ form.as_p }}#}
 
-      <!-- File Input Styled -->
-      <label class="w-full flex flex-col items-center px-6 py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-100 transition">
-        <span class="text-gray-600 font-medium mb-2">Click or drag a file here</span>
-        {{ form.file }}
+      <!-- File Upload -->
+      <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-12 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 transition cursor-pointer text-center">
+        <svg xmlns="http://www.w3.org/2000/svg"
+             class="w-14 h-14 text-gray-400 mb-3"
+             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 16V4m0 0L3 8m4-4l4 4M17 8h4m0 0v12a2 2 0 01-2 2H7a2
+                   2 0 01-2-2v-4" />
+        </svg>
+        <span class="text-gray-600 font-medium text-lg">Drag & Drop or Click to Upload</span>
+        <div class="mt-4 w-full">
+          {{ form.file }}
+        </div>
       </label>
 
-        <!-- Job Description Input -->
-<label class="flex flex-col gap-2">
-  <span class="text-gray-600 font-medium">📝 Job Description</span>
-  {{ form.job_description|add_class:"w-80 h-32 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" }}
-
-</label>
+      <!-- Job Description -->
+      <div>
+        <label class="block text-gray-700 font-semibold mb-3 text-lg">
+          Job Description
+        </label>
+        {{ form.job_description|add_class:"w-full h-44 px-5 py-4 text-gray-800 rounded-2xl border border-gray-300 focus:ring-2 focus:ring-black focus:outline-none bg-gray-50" }}
+      </div>
 
       <!-- Submit Button -->
       <button type="submit"
-              class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow hover:bg-blue-700 transition">
-        🚀 Upload File
+              class="w-full py-4 bg-black text-white text-lg font-semibold rounded-2xl shadow-lg hover:opacity-90 active:scale-95 transition">
+        Analyze Resume
       </button>
     </form>
 
-    <!-- Link to all files -->
-    <div class="mt-6 text-center">
+    <!-- Footer Link -->
+    <div class="mt-12 text-center">
       <a href="{% url 'all_files' %}"
-         class="text-blue-600 hover:text-blue-800 font-medium">
-        🔗 See all uploaded files
+         class="text-gray-600 hover:text-black text-lg font-medium transition">
+        View Uploaded Files →
       </a>
     </div>
   </div>
+
 </body>
 </html>
