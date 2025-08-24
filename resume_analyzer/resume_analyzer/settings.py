@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-06zemi2vx*pg&0$!5f*h-a=!7-^gxh+)!qbok!)=@15dhh&j29'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['resume_analyzer.onrender.com']
 
 
 
