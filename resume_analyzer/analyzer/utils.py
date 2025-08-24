@@ -6,30 +6,78 @@ from portia import (
     DefaultToolRegistry,
     Portia,
     StorageClass,
-    open_source_tool_registry,
     LLMProvider,
 )
 from portia.cli import CLIExecutionHooks
+from portia import PlanBuilderV2
+from pydantic import BaseModel
+from typing import List
 import json
 
 
-def analyze_resume(model_name, resume_text, job_description):
-    # Silence logs
-    logging.disable(logging.CRITICAL)
 
-    # Load .env file
+# -------- Define structured output --------
+class ResumeMatchResult(BaseModel):
+    match_score: float
+    strengths: List[str]
+    missing_keywords: List[str]
+    improvement_tips: List[str]
+
+
+# -------- Build plan using PlanBuilderV2 --------
+def build_resume_analysis_plan(resume_text, job_description):
+    builder = PlanBuilderV2(label="Resume to Job Match Analyzer")
+
+    # Define inputs
+    resume_input = builder.input(
+        name="resume_text", description=f"{resume_text}"
+    )
+    jd_input = builder.input(
+        name="job_description", description=f"{job_description}"
+    )
+
+    # Step: LLM analyzes resume vs job description
+    builder.llm_step(
+        task=(
+            """You are a Resume-Job Match Detective 🕵️‍♂️.
+
+Compare the RESUME against the JOB DESCRIPTION and provide a structured evaluation.
+Return ONLY a valid JSON object matching this schema:
+{
+  'match_score': number from 1–10 (higher means stronger match),
+  'strengths': list of 3 strengths that the resume already shows off,
+  'missing_keywords': list of important skills/keywords from the JD that are hiding from the resume,
+  'improvement_tips': list of 3–5 actionable suggestions to level up the resume,
+  'schedule_plan_to_improve': create a smart plan to learn from the improvement tips.
+}
+
+Do not include any extra text, commentary, or formatting outside of JSON."""
+        ),
+        inputs=[resume_input, jd_input],
+        output_schema=ResumeMatchResult,
+        step_name="analyze_resume",
+    )
+
+    # Final structured output
+    builder.final_output(output_schema=ResumeMatchResult)
+
+    return builder.build()
+
+
+# -------- Main analyzer --------
+def analyze_resume(model_name, resume_text, job_description):
+    logging.disable(logging.CRITICAL)
     load_dotenv()
 
-    # Fetch key from environment
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     if not GOOGLE_API_KEY:
         raise ValueError("GOOGLE_API_KEY is not set. Please check your .env file.")
 
-    # Configure Portia with Google Gemini
     google_config = Config.from_default(
         llm_provider=LLMProvider.GOOGLE,
         default_model=f"google/{model_name}",
-        google_api_key=GOOGLE_API_KEY
+        google_api_key=GOOGLE_API_KEY,
+        storage_class=StorageClass.MEMORY,
     )
 
     portia = Portia(
@@ -38,64 +86,106 @@ def analyze_resume(model_name, resume_text, job_description):
         execution_hooks=CLIExecutionHooks(),
     )
 
-    # Prompt for Resume-to-Job Match Analyzer
-    prompt = f"""
- You are an AI Resume-to-Job Match Analyzer. Compare the following RESUME and JOB DESCRIPTION. Return ONLY a valid JSON object with these fields: - match_score: float from 1 to 10 - strengths: list of top 3 strengths - missing_keywords: list of missing important skills - improvement_tips: list of resume improvement tips RESUME: {resume_text} JOB DESCRIPTION: {job_description} and send rajvaidyarohit25@outlook.com a report in plain text not json about it.
-"""
+    plan = build_resume_analysis_plan(resume_text, job_description)
 
     try:
-        plan = portia.plan(prompt)
-
-        if not plan:
-            print("⚠️ Plan creation failed. Check model name, quota, or missing API keys.")
-            return False
-
-        print(plan.pretty_print())
-        plan_run = portia.run_plan(plan, end_user="its me, mario")
+        plan_run = portia.run_plan(
+            plan,
+            plan_run_inputs={"resume_text": resume_text, "job_description": job_description},
+            end_user="its me, mario",
+        )
 
         if plan_run and plan_run.outputs:
-            print(plan_run.outputs)
-            return True
+            return plan_run.outputs  # ✅ Already validated JSON
         else:
             print("⚠️ No outputs returned from Portia.")
-            return False
+            return None
 
     except Exception as e:
         print("Error:", e)
-        return False
+        return None
 
-# Example resume and job description
-resume = """
+
+# -------- Fallback across models --------
+def analyze_resume_with_fallback(resume_text, job_description):
+    models = [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-2.5-flash",
+    ]
+
+    for model in models:
+        print(f"🔄 Attempting with {model} ...")
+        result = analyze_resume(model, resume_text, job_description)
+
+        if result:
+            print(f"✅ Success with {model}")
+
+            try:
+                # Convert PlanRunOutputs → dict
+                result_dict = result.model_dump()
+
+                # Extract the final JSON string safely
+                raw_value = result_dict.get("final_output", {}).get("value", "{}")
+
+                # Parse string → Python dict
+                parsed = json.loads(raw_value)
+
+                # Pretty print important fields
+                print(f"\n📊 Match Score: {parsed.get('match_score', 'N/A')}")
+
+                strengths = parsed.get("strengths", [])
+                if strengths:
+                    print("💪 Strengths:")
+                    for s in strengths[:3]:  # show top 3
+                        print(f"   - {s}")
+
+                missing = parsed.get("missing_keywords", [])
+                if missing:
+                    print("❌ Missing Keywords:")
+                    print("   " + ", ".join(missing))
+
+                tips = parsed.get("improvement_tips", [])
+                if tips:
+                    print("📝 Improvement Tips:")
+                    for t in tips:
+                        print(f"   - {t}")
+
+                schedule_plan = parsed.get("schedule_plan_to_improve", [])
+                if schedule_plan:
+                    print("Schedule Plan:")
+                    if schedule_plan:
+                        print("   " + ", ".join(schedule_plan))
+
+                # ✅ Return parsed dict for downstream usage
+                return parsed
+
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"⚠️ Failed to parse LLM output: {e}")
+                return None
+
+    print("❌ All models failed.")
+    return None
+
+
+# -------- Example run --------
+resume_text = """
 Software Engineer with 2+ years of experience in Python, Django, SQL, and automation.
 Worked on RPA (Automation Anywhere), Selenium, and Playwright for process optimization.
 Built internal tools to reduce manual effort by 40%.
 """
 
-jd = """
+job_description = """
 We are looking for a Backend Developer with experience in Python, Django, REST APIs,
 cloud platforms (AWS/GCP), and system design. Knowledge of containerization (Docker, Kubernetes) and database optimization is a plus.
 """
 
 
-def analyze_resume_with_fallback(resume, jd):
-    models = [
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-2.5-flash"
-    ]
 
-    for model in models:
-        print(f"🔄 Attempting with {model} ...")
-        try:
-            result = analyze_resume(model, resume, jd)
-            if result:  # Only succeed if non-empty / valid result
-                print(f"✅ Resume analysis completed successfully with {model}")
-        except Exception as e:
-            print(f"⚠️ {model} failed with error: {e}")
-            continue  # Try the next model
 
-    print("❌ All models failed. Please check API keys, quota, or network issues.")
-    return None
 
-# analyze_resume_with_fallback(resume, jd)
+
+
+
+

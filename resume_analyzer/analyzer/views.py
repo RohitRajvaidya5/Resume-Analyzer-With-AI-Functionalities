@@ -13,6 +13,8 @@ from .forms import TextDocumentForm
 from .models import TextDocument
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+import os
+
 
 
 @csrf_exempt
@@ -21,16 +23,30 @@ def analyze_resume(request, doc_id):
         try:
             doc = TextDocument.objects.get(id=doc_id)
 
-            # Get resume text + job description
+            # Read resume and job description
             resume_text = doc.file.read().decode("utf-8", errors="ignore")
             job_desc = doc.job_description
 
-            # Call your analysis function (not the view itself!)
+            # Run your analyzer
             result = analyze_resume_with_fallback(resume_text, job_desc)
 
-            return JsonResponse({"status": "success", "result": result})
+            if not result:
+                return JsonResponse({"status": "error", "message": "No result from analyzer"})
+
+            # Map backend result → frontend format
+            formatted_result = {
+                "ats_score": int(result.get("match_score", 0) * 10),  # convert 0–10 → %
+                "suggestions": (
+                    result.get("improvement_tips", [])
+                    + [f"Missing keyword: {kw}" for kw in result.get("missing_keywords", [])]
+                )
+            }
+
+            return JsonResponse({"status": "success", "result": formatted_result})
+
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)})
+
     return JsonResponse({"status": "error", "message": "Invalid request"})
 
 
@@ -42,9 +58,9 @@ def upload_text(request):
     if request.method == 'POST':
         form = TextDocumentForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            doc = form.save()
             messages.success(request, 'Upload successful.')
-            return redirect('all_files')
+            return redirect('detail',pk=doc.pk)
         else:
             messages.error(request, "Something went wrong. Please check your input.")
     else:
@@ -54,7 +70,9 @@ def upload_text(request):
 
 
 def detail(request, pk):
+
     doc = get_object_or_404(TextDocument, pk=pk)
+    file_name = os.path.basename(doc.file.name)
     file_path = doc.file.path
     ext = os.path.splitext(file_path)[1].lower()
     content = ""
@@ -82,7 +100,11 @@ def detail(request, pk):
     except Exception as e:
         content = f"⚠️ Error reading file: {str(e)}"
 
-    return render(request, 'analyzer/detail.html', {'doc': doc, 'content': content})
+    return render(request, 'analyzer/detail.html', {
+        'doc': doc,
+        'content': content,
+        'file_name': file_name,  # pass just the file name
+    })
 
 
 def all_files(request):
